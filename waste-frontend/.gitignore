@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.venv
+venv/
+waste_management_system/venv/
