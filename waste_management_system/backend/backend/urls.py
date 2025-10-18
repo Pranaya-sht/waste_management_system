@@ -22,6 +22,10 @@ from waste.views import ComplaintViewSet ,UserViewSet
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from waste import views
 from waste.views import CustomTokenObtainPairView
+
+from django.conf import settings
+from django.conf.urls.static import static
+
 router = routers.DefaultRouter()
 router.register(r'complaints', ComplaintViewSet)
 router.register(r'users', UserViewSet)
@@ -32,6 +36,8 @@ urlpatterns = [
     path('api/', include(router.urls)) ,
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
-
+    path("api/workers/<int:worker_id>/rate/", views.rate_worker, name="rate_worker"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"), 
-]
+    path("api/users/profile/", views.user_profile, name="user_profile"),
+    path('api/users/<int:user_id>/profile/', views.get_user_profile, name='get_user_profile'),  
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -37,36 +37,18 @@ class Profile(models.Model):
     phone_number = models.CharField(max_length=15, blank=True)
     bio = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+   
+ #  New rating fields
+    rating = models.FloatField(default=0.0)
+    total_ratings = models.IntegerField(default=0)
+    rating_sum = models.IntegerField(default=0)
+
+    def update_rating(self, new_rating):
+        """Update worker's average rating"""
+        self.rating_sum += new_rating
+        self.total_ratings += 1
+        self.rating = self.rating_sum / self.total_ratings
+        self.save()
+
     def __str__(self):
         return f"{self.user.username} ({self.role})"
-    
-# @receiver(post_save, sender=User)
-# def create_user_profile(sender, instance, created, **kwargs):
-#     if created:
-#         # Default role: Citizen
-#         role = "Citizen"
-
-#         # If user is superuser, mark them as Superuser and approved
-#         if instance.is_superuser:
-#             role = "Superuser"
-
-#         profile = Profile.objects.create(
-#             user=instance,
-#             role=role,
-#             is_approved=True  # Superuser is automatically approved
-#         )
-
-# @receiver(post_save, sender=User)
-# def save_user_profile(sender, instance, **kwargs):
-#     if hasattr(instance, 'profile'):
-#         instance.profile.save() 
-        
-
-# @receiver(post_save, sender=User)
-# def create_user_profile(sender, instance, created, **kwargs):
-#     if created:
-#         if instance.is_superuser:
-#             # Mark superuser distinctly
-#             Profile.objects.create(user=instance, role="Superuser", is_approved=True)
-#         else:
-#             Profile.objects.create(user=instance)

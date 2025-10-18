@@ -49,21 +49,25 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 
-    def update(self, instance, validated_data):
-            profile_data = validated_data.pop('profile', {})
-            profile = instance.profile
+def update(self, instance, validated_data):
+    profile_data = validated_data.pop('profile', {})
+    profile = instance.profile
 
-            instance.username = validated_data.get('username', instance.username)
-            instance.email = validated_data.get('email', instance.email)
-            instance.save()
+    instance.username = validated_data.get('username', instance.username)
+    instance.email = validated_data.get('email', instance.email)
+    instance.save()
 
-            profile.role = profile_data.get('role', profile.role)
-            profile.phone_number = profile_data.get('phone_number', profile.phone_number)
-            profile.bio = profile_data.get('bio', profile.bio)
-            profile.profile_picture = profile_data.get('profile_picture', profile.profile_picture)
-            profile.save()
+    profile.role = profile_data.get('role', profile.role)
+    profile.phone_number = profile_data.get('phone_number', profile.phone_number)
+    profile.bio = profile_data.get('bio', profile.bio)
+    # ✅ Handle image file correctly
+    profile_picture = profile_data.get('profile_picture')
+    if profile_picture:
+        profile.profile_picture = profile_picture
+    profile.save()
 
-            return instance
+    return instance
+
 
 
 class ComplaintSerializer(serializers.ModelSerializer):
@@ -71,3 +75,11 @@ class ComplaintSerializer(serializers.ModelSerializer):
         model = Complaint
         fields = '__all__'
         
+class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = "__all__"
+        read_only_fields = ["rating", "total_ratings", "rating_sum"]

@@ -2,19 +2,31 @@ from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework import viewsets, status
 from .models import Complaint, Profile
-from .serializers import ComplaintSerializer, UserSerializer
+from .serializers import ComplaintSerializer, UserSerializer, ProfileSerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
+from .models import Profile
+from .permission import IsAdminUserCustom
 
-@api_view(["GET"])
+@api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
 def get_current_user(request):
-    serializer = UserSerializer(request.user)
-    return Response(serializer.data)
+    if request.method == "GET":
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    elif request.method == "PUT":
+        serializer = UserSerializer(
+            request.user, data=request.data, partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ComplaintViewSet(viewsets.ModelViewSet):
@@ -25,6 +37,20 @@ class ComplaintViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAdminUserCustom] 
+    
+    @action(detail=False, methods=['get', 'put'], permission_classes=[IsAuthenticated])
+    def profile(self, request):
+        profile = request.user.profile
+        if request.method == 'GET':
+            serializer = ProfileSerializer(profile)
+            return Response(serializer.data)
+        elif request.method == 'PUT':
+            serializer = ProfileSerializer(profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     # ✅ Approve user ( worker)
     @action(detail=True, methods=['post'])
@@ -100,3 +126,99 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rate_worker(request, worker_id):
+    """Allow citizens to rate workers (1–5 stars)."""
+    try:
+        worker = Profile.objects.get(user__id=worker_id, role="Worker")
+    except Profile.DoesNotExist:
+        return Response({"detail": "Worker not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.user.profile.role != "Citizen":
+        return Response({"detail": "Only citizens can rate workers."}, status=status.HTTP_403_FORBIDDEN)
+
+    rating_value = request.data.get("rating")
+    try:
+        rating_value = float(rating_value)
+    except (TypeError, ValueError):
+        return Response({"detail": "Invalid rating value."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if rating_value < 1 or rating_value > 5:
+        return Response({"detail": "Rating must be between 1 and 5."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ✅ Update the worker's rating based on your model structure
+    if hasattr(worker, 'rating_sum') and hasattr(worker, 'rating_count'):
+        # If using sum/count system
+        worker.rating_sum = getattr(worker, 'rating_sum', 0) + rating_value
+        worker.rating_count = getattr(worker, 'rating_count', 0) + 1
+        new_average = worker.rating_sum / worker.rating_count
+    else:
+        # If using direct average system
+        current_rating = getattr(worker, 'rating', 0) or 0
+        current_count = getattr(worker, 'rating_count', 0)
+        total_score = current_rating * current_count
+        worker.rating_count = current_count + 1
+        new_average = (total_score + rating_value) / worker.rating_count
+        worker.rating = new_average
+
+    worker.save()
+
+    return Response({
+        "message": f"Rated {worker.user.username} with {rating_value} stars.",
+        "new_average": round(new_average, 2),
+    }, status=status.HTTP_200_OK)
+    
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def user_profile(request):
+    profile = request.user.profile
+
+    if request.method == "GET":
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data)
+
+    elif request.method == "PUT":
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_user_profile(request, user_id):
+    """Get public profile information for any user"""
+    try:
+        user = User.objects.get(id=user_id)
+        profile = user.profile
+        
+        # Calculate rating average if rating_sum exists
+        rating = 0
+        rating_count = 0
+        
+        if hasattr(profile, 'rating_sum') and hasattr(profile, 'rating_count'):
+            rating_count = profile.rating_count
+            rating = profile.rating_sum / profile.rating_count if profile.rating_count > 0 else 0
+        elif hasattr(profile, 'rating'):
+            # If there's a direct rating field
+            rating = profile.rating or 0
+            rating_count = getattr(profile, 'rating_count', 0)
+        
+        # Return limited public information
+        data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'role': profile.role,
+            'bio': profile.bio,
+            'phone_number': profile.phone_number,
+            'profile_picture': profile.profile_picture.url if profile.profile_picture else None,
+            'rating': round(rating, 2),
+            'rating_count': rating_count,
+            'is_approved': profile.is_approved,
+            'date_joined': user.date_joined,
+        }
+        return Response(data)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
