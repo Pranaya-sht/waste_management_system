@@ -25,18 +25,24 @@ export default function Login() {
 
             const user = userRes.data;
 
+            // 🟢 Save role and username in localStorage
+            localStorage.setItem("role", user.role);
+            localStorage.setItem("username", user.username);
+
             // 3️⃣ Block unapproved users
             if ((user.role === "Admin" || user.role === "Worker") && !user.is_approved) {
                 setMessage(`⏳ Your ${user.role} account is pending approval.`);
                 localStorage.removeItem("access");
                 localStorage.removeItem("refresh");
+                localStorage.removeItem("role");
+                localStorage.removeItem("username");
                 return;
             }
 
             // 4️⃣ Success message and redirect
             setMessage(`✅ Welcome, ${user.username}! (${user.role})`);
 
-            // You can navigate to dashboards like this if using React Router:
+            // 🧭 Optionally redirect based on role
             // if (user.role === "Admin") navigate("/admin-dashboard");
             // else if (user.role === "Worker") navigate("/worker-dashboard");
             // else navigate("/citizen-dashboard");

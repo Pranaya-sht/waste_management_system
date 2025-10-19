@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import Complaint, Profile
+from .models import Complaint, Profile, Message, ComplaintMedia
 from django.contrib.auth.models import User
 
+from .models import Rating  # make sure Rating model exists
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
@@ -68,12 +69,26 @@ def update(self, instance, validated_data):
 
     return instance
 
-
-
+ 
 class ComplaintSerializer(serializers.ModelSerializer):
+    picture_url = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Complaint
-        fields = '__all__'
+        fields = "__all__"
+        read_only_fields = ["status", "citizen", "assigned_worker", "created_at", "updated_at"]
+    def get_picture_url(self, obj):
+        if obj.picture:
+            return self.context['request'].build_absolute_uri(obj.picture.url)
+        return None
+
+    def get_video_url(self, obj):
+        if obj.video:
+            return self.context['request'].build_absolute_uri(obj.video.url)
+        return None
+
+       
         
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
@@ -83,3 +98,21 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = "__all__"
         read_only_fields = ["rating", "total_ratings", "rating_sum"]
+        
+class MessageSerializer(serializers.ModelSerializer):
+    sender = UserSerializer(read_only=True)
+    receiver = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = '__all__'
+        
+class ComplaintMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComplaintMedia
+        fields = '__all__'
+        
+class RatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
+        fields = '__all__'
