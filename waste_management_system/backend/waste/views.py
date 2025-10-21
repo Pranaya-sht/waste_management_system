@@ -1,11 +1,11 @@
 from django.shortcuts import render
 from django.contrib.auth.models import User
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from .models import Complaint, Profile, Rating, Message, ComplaintMedia
 from .serializers import ComplaintSerializer, ProfileSerializer, RatingSerializer, MessageSerializer, ComplaintMediaSerializer,UserSerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
@@ -13,8 +13,9 @@ from .models import Profile
 from .permission import IsAdminUserCustom
 from rest_framework.views import APIView
 from django.db import models
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from rest_framework.decorators import api_view
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 @api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
@@ -77,12 +78,12 @@ def complaint_stats(request):
         "resolution_rate": resolution_rate,
     })
 
-
 class ComplaintViewSet(viewsets.ModelViewSet):
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
-    # parser_classes = [MultiPartParser, FormParser] 
-
+    parser_classes = [MultiPartParser, FormParser, JSONParser] 
+    
+    
     def get_queryset(self):
         complaints = Complaint.objects.all()
         for c in complaints:
@@ -92,7 +93,9 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         if profile.role == "Citizen":
                 return complaints.filter(citizen=user)
         elif profile.role == "Worker":
-                return complaints.filter(assigned_worker=user) | complaints.filter(status='Pending')
+            return complaints.filter(
+        Q(assigned_worker=user) | Q(status='Pending')
+    )
         elif profile.role == "Admin":
                 return complaints
         return Complaint.objects.none()
@@ -106,38 +109,39 @@ class ComplaintViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(citizen=self.request.user)
  # Worker: Accept complaint
-    @action(detail=True, methods=['post'])
-    def accept(self, request, pk=None):
-        complaint = self.get_object()
-        complaint.check_and_expire()  # ✅ Check expiration before accepting
+    # @action(detail=True, methods=['post'])
+    # def accept(self, request, pk=None):
+    #     complaint = self.get_object()
+    #     complaint.check_and_expire()  # ✅ Check expiration before accepting
 
-        if complaint.status == 'Expired':
-            return Response({"error": "Cannot accept. Complaint has expired."}, status=400)
+    #     if complaint.status == 'Expired':
+    #         return Response({"error": "Cannot accept. Complaint has expired."}, status=400)
 
-        if request.user.profile.role != "Worker":
-            return Response({"error": "Only workers can accept complaints"}, status=403)
-        if complaint.status != 'Pending':
-            return Response({"error": "Complaint already assigned"}, status=400)
+    #     if request.user.profile.role != "Worker":
+    #         return Response({"error": "Only workers can accept complaints"}, status=403)
+    #     if complaint.status != 'Pending':
+    #         return Response({"error": "Complaint already assigned"}, status=400)
 
-        complaint.assigned_worker = request.user
-        complaint.status = 'Accepted'
-        complaint.save()
-        return Response({"success": "Complaint accepted"})
+    #     complaint.assigned_worker = request.user
+    #     complaint.status = 'Accepted'
+    #     complaint.save()
+    #     return Response({"success": "Complaint accepted"})
 
     # Worker: Update status
     @action(detail=True, methods=['post'])
     def update_status(self, request, pk=None):
         complaint = self.get_object()
+        new_status = request.data.get('status')
         complaint.check_and_expire()  # ✅ Check expiration before updating
 
         if complaint.status == 'Expired':
             return Response({"error": "Cannot update. Complaint has expired."}, status=400)
 
         status_update = request.data.get('status')
-        valid_status = ['Accepted', 'In Progress', 'Completed']
+        valid_status  = ["Accepted", "In Progress", "Completed", "Denied", "Incomplete"]
         if status_update not in valid_status:
             return Response({"error": f"Invalid status. Must be one of {valid_status}"}, status=400)
-
+       
         complaint.status = status_update
         complaint.save()
         return Response({"success": f"Complaint status updated to {status_update}"})
@@ -240,12 +244,60 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         complaint.status = "Accepted"
         complaint.save()
         return Response({"success": "Workers assigned successfully."})
+    
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        complaint = self.get_object()
+        complaint.check_and_expire()  # ✅ Check expiration before accepting
+
+        worker_lat = request.data.get('worker_lat')
+        worker_lng = request.data.get('worker_lng')
+        if complaint.status == 'Expired':
+            return Response({"error": "Cannot accept. Complaint has expired."}, status=400)
+
+        if request.user.profile.role != "Worker":
+            return Response({"error": "Only workers can accept complaints"}, status=403)
+        if complaint.status != 'Pending':
+            return Response({"error": "Complaint already assigned"}, status=400)
+
+        worker_lat = request.data.get('worker_lat')
+        worker_lng = request.data.get('worker_lng')
+
+        if not worker_lat or not worker_lng:
+            return Response({"error": "Location required"}, status=400)
+
+        # ✅ Save worker info & update complaint status
+        complaint.assigned_worker = request.user
+        complaint.worker_lat = worker_lat
+        complaint.worker_lng = worker_lng
+        complaint.status = 'Accepted'
+        complaint.save()
+
+        return Response({"success": "Complaint accepted successfully"}, status=200)
+
+
+
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUserCustom] 
+# permission_classes = [IsAdminUserCustom] 
+    
+    def get_permissions(self):
+        # Allow anyone to register (POST)
+        if self.action in ['create']:
+            permission_classes = [AllowAny]
+        # Allow authenticated users to view/update their profile
+        elif self.action in ['profile']:
+            permission_classes = [IsAuthenticated]
+        # Only Admin or Superuser for approval actions
+        elif self.action in ['approve_worker', 'unapprove_worker']:
+            permission_classes = [IsAuthenticated]
+        else:
+            # Default to authenticated for everything else
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
     
     @action(detail=False, methods=['get', 'put'], permission_classes=[IsAuthenticated])
     def profile(self, request):

@@ -68,24 +68,43 @@ def update(self, instance, validated_data):
     profile.save()
 
     return instance
-
- 
 class ComplaintSerializer(serializers.ModelSerializer):
     picture_url = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
+    citizen = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
         fields = "__all__"
         read_only_fields = ["status", "citizen", "assigned_worker", "created_at", "updated_at"]
+
+    def get_citizen(self, obj):
+        """Return detailed citizen info including phone number"""
+        if obj.citizen:
+            profile = getattr(obj.citizen, "profile", None)
+            return {
+                "id": obj.citizen.id,
+                "username": obj.citizen.username,
+                "email": obj.citizen.email,
+                "phone_number": getattr(profile, "phone_number", None),
+                "bio": getattr(profile, "bio", None),
+            }
+        return None
+
     def get_picture_url(self, obj):
-        if obj.picture:
-            return self.context['request'].build_absolute_uri(obj.picture.url)
+        """Return full picture URL if present"""
+        if obj.picture and self.context.get("request"):
+            return self.context["request"].build_absolute_uri(obj.picture.url)
+        elif obj.picture:
+            return obj.picture.url
         return None
 
     def get_video_url(self, obj):
-        if obj.video:
-            return self.context['request'].build_absolute_uri(obj.video.url)
+        """Return full video URL if present"""
+        if obj.video and self.context.get("request"):
+            return self.context["request"].build_absolute_uri(obj.video.url)
+        elif obj.video:
+            return obj.video.url
         return None
 
        
@@ -93,7 +112,6 @@ class ComplaintSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
-
     class Meta:
         model = Profile
         fields = "__all__"

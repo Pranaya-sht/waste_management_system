@@ -6,6 +6,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import AdminDashboardAnalysis from "./pages/AdminDashboardAnalysis";
 import CitizenComplaintsPage from "./pages/CitizenComplaintsPage";
+import WorkerComplaintPage from "./pages/WorkerComplaintPage";
 export default function App() {
   return (
     <BrowserRouter>
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/admin-dashboard-analysis" element={<AdminDashboardAnalysis />} />
         <Route path="/citizen-complants" element={<CitizenComplaintsPage />} />
+        <Route path="/worker-complants-acceptance" element={<WorkerComplaintPage />} />
       </Routes>
     </BrowserRouter>
   );

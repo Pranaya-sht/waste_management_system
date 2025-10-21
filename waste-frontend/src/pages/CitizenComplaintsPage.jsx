@@ -11,8 +11,23 @@ import {
     AlertTriangle,
     Image as ImageIcon,
     X,
-    Upload
+    Upload,
+    Search
 } from "lucide-react";
+
+// You'll need to install these map packages:
+// npm install leaflet react-leaflet
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default markers in react-leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const ProfessionalComplaintPortal = () => {
     const [complaints, setComplaints] = useState([]);
@@ -24,6 +39,10 @@ const ProfessionalComplaintPortal = () => {
     const [assigning, setAssigning] = useState({});
     const [message, setMessage] = useState("");
     const [uploading, setUploading] = useState(false);
+    const [showMap, setShowMap] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
 
     const [form, setForm] = useState({
         title: "",
@@ -32,7 +51,9 @@ const ProfessionalComplaintPortal = () => {
         priority: "medium",
         location: "",
         landmark: "",
-        media: [] // Holds images and videos
+        location_lat: null,
+        location_lng: null,
+        media: []
     });
 
     const token = localStorage.getItem("access");
@@ -41,6 +62,17 @@ const ProfessionalComplaintPortal = () => {
         baseURL: "http://127.0.0.1:8000/api",
         headers: { Authorization: `Bearer ${token}` },
     });
+
+    // Map click handler component
+    function MapClickHandler({ onLocationSelect }) {
+        useMapEvents({
+            click: (e) => {
+                const { lat, lng } = e.latlng;
+                onLocationSelect(lat, lng);
+            },
+        });
+        return null;
+    }
 
     const showToast = (text, type = "info") => {
         setMessage({ text, type });
@@ -66,6 +98,74 @@ const ProfessionalComplaintPortal = () => {
         }
     };
 
+    // Search for location using Nominatim (OpenStreetMap)
+    const searchLocation = async (query) => {
+        if (!query.trim()) return;
+
+        setSearching(true);
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+            );
+            const data = await response.json();
+            setSearchResults(data);
+        } catch (error) {
+            console.error("Error searching location:", error);
+            showToast("Error searching location", "error");
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handleLocationSelect = async (lat, lng) => {
+        try {
+            // Reverse geocoding to get address from coordinates
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+            );
+            const data = await response.json();
+
+            const address = data.display_name || "Selected location";
+
+            setForm(prev => ({
+                ...prev,
+                location: address,
+                location_lat: lat,
+                location_lng: lng
+            }));
+
+            setShowMap(false);
+            showToast("Location selected successfully!", "success");
+        } catch (error) {
+            console.error("Error getting address:", error);
+            // If reverse geocoding fails, still set the coordinates
+            setForm(prev => ({
+                ...prev,
+                location: `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+                location_lat: lat,
+                location_lng: lng
+            }));
+            setShowMap(false);
+        }
+    };
+
+    const selectSearchResult = (result) => {
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+
+        setForm(prev => ({
+            ...prev,
+            location: result.display_name,
+            location_lat: lat,
+            location_lng: lng
+        }));
+
+        setSearchResults([]);
+        setSearchQuery("");
+        setShowMap(false);
+        showToast("Location selected!", "success");
+    };
+
     const handleMediaChange = (e) => {
         const files = Array.from(e.target.files);
 
@@ -75,7 +175,7 @@ const ProfessionalComplaintPortal = () => {
         }
 
         const validFiles = files.filter(file => {
-            if (file.size > 20 * 1024 * 1024) { // 20MB max
+            if (file.size > 20 * 1024 * 1024) {
                 showToast(`${file.name} exceeds 20MB`, "warning");
                 return false;
             }
@@ -105,16 +205,26 @@ const ProfessionalComplaintPortal = () => {
         }
 
         const formData = new FormData();
-        formData.append("title", form.title);
-        formData.append("description", form.description);
-        formData.append("category", form.category);
-        formData.append("priority", form.priority);
-        formData.append("location", form.location);
-        formData.append("landmark", form.landmark);
+        formData.append('title', form.title);
+        formData.append('description', form.description);
+        formData.append('category', form.category);
+        formData.append('priority', form.priority);
+        formData.append('location', form.location);
+        formData.append('landmark', form.landmark);
 
+        // Add coordinates if available
+        if (form.location_lat && form.location_lng) {
+            formData.append('location_lat', form.location_lat);
+            formData.append('location_lng', form.location_lng);
+        }
+
+        // Append media files
         form.media.forEach((file, index) => {
-            if (file.type.startsWith("image/")) formData.append(`picture_${index + 1}`, file);
-            else if (file.type.startsWith("video/")) formData.append(`video_${index + 1}`, file);
+            if (file.type.startsWith("image/")) {
+                formData.append(`picture_${index + 1}`, file);
+            } else if (file.type.startsWith("video/")) {
+                formData.append(`video_${index + 1}`, file);
+            }
         });
 
         try {
@@ -130,12 +240,15 @@ const ProfessionalComplaintPortal = () => {
                 priority: "medium",
                 location: "",
                 landmark: "",
+                location_lat: null,
+                location_lng: null,
                 media: []
             });
             setShowForm(false);
             fetchData();
         } catch (err) {
             showToast("Error submitting complaint", "error");
+            console.error("Submission error:", err);
         } finally {
             setUploading(false);
         }
@@ -281,6 +394,31 @@ const ProfessionalComplaintPortal = () => {
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <Clock className="inline h-4 w-4 mr-1" /> Desired Cleanup Time
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="datetime-local"
+                                            value={form.desired_cleanup_time || ""}
+                                            onChange={(e) => setForm({ ...form, desired_cleanup_time: e.target.value })}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({ ...form, desired_cleanup_time: "" })}
+                                            className="text-gray-500 hover:text-red-500 transition-colors"
+                                            title="Clear"
+                                        >
+                                            <X className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Choose a preferred date and time for the issue to be resolved.
+                                    </p>
+                                </div>
+
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -318,13 +456,59 @@ const ProfessionalComplaintPortal = () => {
                                         <MapPin className="inline h-4 w-4 mr-1" />
                                         Location
                                     </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Where is this issue located?"
-                                        value={form.location}
-                                        onChange={(e) => setForm({ ...form, location: e.target.value })}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Search or click on map to select location"
+                                                value={form.location}
+                                                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                                                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowMap(true)}
+                                                className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                <MapPin className="h-5 w-5" />
+                                            </button>
+                                        </div>
+
+                                        {/* Search location */}
+                                        <div className="relative">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search for location..."
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                                <button
+                                                    onClick={() => searchLocation(searchQuery)}
+                                                    disabled={searching}
+                                                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                                                >
+                                                    {searching ? <Loader className="animate-spin h-4 w-4" /> : <Search className="h-4 w-4" />}
+                                                </button>
+                                            </div>
+
+                                            {/* Search results */}
+                                            {searchResults.length > 0 && (
+                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                    {searchResults.map((result, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                                                            onClick={() => selectSearchResult(result)}
+                                                        >
+                                                            <div className="font-medium">{result.display_name}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -433,6 +617,62 @@ const ProfessionalComplaintPortal = () => {
                     </div>
                 )}
 
+                {/* Map Modal */}
+                {showMap && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl h-[80vh]">
+                            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                                <h3 className="text-2xl font-bold text-gray-900">Select Location on Map</h3>
+                                <button
+                                    onClick={() => setShowMap(false)}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
+                            <div className="h-full p-6">
+                                <MapContainer
+                                    center={[28.6139, 77.2090]} // Default to Delhi
+                                    zoom={13}
+                                    style={{ height: '100%', width: '100%' }}
+                                >
+                                    <TileLayer
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                    />
+                                    <MapClickHandler onLocationSelect={handleLocationSelect} />
+                                    {form.location_lat && form.location_lng && (
+                                        <Marker position={[form.location_lat, form.location_lng]}>
+                                            <Popup>
+                                                Selected Location: {form.location}
+                                            </Popup>
+                                        </Marker>
+                                    )}
+                                </MapContainer>
+                            </div>
+                            <div className="p-6 border-t border-gray-200">
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Click anywhere on the map to select the location. The address will be automatically detected.
+                                </p>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowMap(false)}
+                                        className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => setShowMap(false)}
+                                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        Confirm Selection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Complaints List */}
                 <div className="space-y-6">
                     {complaints.length === 0 ? (
@@ -456,6 +696,13 @@ const ProfessionalComplaintPortal = () => {
                                     {complaint.landmark && <span>Landmark: {complaint.landmark}</span>}
                                 </div>
                                 <p className="text-gray-700 mb-3">{complaint.description}</p>
+
+                                {/* Show coordinates if available */}
+                                {complaint.location_lat && complaint.location_lng && (
+                                    <div className="text-sm text-gray-500 mb-3">
+                                        Coordinates: {complaint.location_lat.toFixed(4)}, {complaint.location_lng.toFixed(4)}
+                                    </div>
+                                )}
 
                                 {/* Media Preview */}
                                 {complaint.media && complaint.media.length > 0 && (

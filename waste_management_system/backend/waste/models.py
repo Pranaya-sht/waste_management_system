@@ -64,6 +64,10 @@ class Complaint(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     interested_workers = models.ManyToManyField(User, related_name="interested_complaints", blank=True)
+    
+    worker_lat = models.FloatField(blank=True, null=True)
+    worker_lng = models.FloatField(blank=True, null=True)
+    status = models.CharField(max_length=50, default='Pending')
     assigned_workers = models.ManyToManyField(
     User,
     blank=True,
