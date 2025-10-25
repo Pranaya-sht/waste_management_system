@@ -38,10 +38,23 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'channels',
     'rest_framework',
     'rest_framework_simplejwt',
     'waste',
 ]
+
+
+
+
+# Redis backend for WebSocket communication
+ASGI_APPLICATION = "backend.asgi.application"  # Path to your ASGI app
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
+
 REST_FRAMEWORK = {
    'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

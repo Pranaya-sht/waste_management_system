@@ -63,7 +63,7 @@ def complaint_stats(request):
     """Return basic complaint statistics"""
     total = Complaint.objects.count()
     pending = Complaint.objects.filter(status="Pending").count()
-    in_progress = Complaint.objects.filter(status="In Progress").count()
+    in_progress = Complaint.objects.filter(status="Accepted").count()
     completed = Complaint.objects.filter(status="Completed").count()
     expired = Complaint.objects.filter(status="Expired").count()
 

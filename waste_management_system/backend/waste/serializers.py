@@ -72,12 +72,21 @@ class ComplaintSerializer(serializers.ModelSerializer):
     picture_url = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
     citizen = serializers.SerializerMethodField()
+    assigned_to = UserSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
+    has_rating = serializers.SerializerMethodField()  # Add this field
 
     class Meta:
         model = Complaint
         fields = "__all__"
-        read_only_fields = ["status", "citizen", "assigned_worker", "created_at", "updated_at"]
 
+    def get_has_rating(self, obj):
+        """Check if the current user has already rated this complaint"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Rating.objects.filter(complaint=obj, citizen=request.user).exists()
+        return False
+    
     def get_citizen(self, obj):
         """Return detailed citizen info including phone number"""
         if obj.citizen:
