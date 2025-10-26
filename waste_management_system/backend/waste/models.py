@@ -151,14 +151,24 @@ class Rating(models.Model):
 # -------------------------------
 class Message(models.Model):
     complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE, related_name='messages', null=True, blank=True)
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages', null=True, blank=True)
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages', null=True, blank=True)
-    message = models.TextField(blank=True)
+    message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    message_type = models.CharField(max_length=20, choices=[
+        ('direct', 'Direct Message'),
+        ('complaint', 'Complaint Message'),
+    ], default='direct')
+    
+    class Meta:
+        ordering = ['created_at']
 
     def __str__(self):
         sender_name = self.sender.username if self.sender else "Unknown"
-        receiver_name = self.receiver.username if self.receiver else "Unknown"
+        if self.complaint:
+            return f"Complaint message from {sender_name} in complaint #{self.complaint.id}"
+        receiver_name = self.receiver.username if self.receiver else "Group"
         return f"Message from {sender_name} to {receiver_name}"
 
 # -------------------------------

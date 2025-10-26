@@ -15,8 +15,10 @@ import {
     Loader,
     Image as ImageIcon,
     Video,
-    Eye
+    Eye,
+    MessageCircle // Added for communicate button
 } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // Added for navigation
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -37,6 +39,31 @@ const WorkerComplaintCard = ({ complaint, onUpdate }) => {
     const [showMedia, setShowMedia] = useState({ picture: false, video: false });
     const [mediaErrors, setMediaErrors] = useState({ picture: false, video: false });
     const token = localStorage.getItem("access");
+    const navigate = useNavigate(); // Added for navigation
+
+    // Communication function - similar to CitizenComplaintsPage
+    const handleCommunicate = () => {
+        console.log("Initiating communication for complaint:", complaint);
+        const targetUser = complaint.citizen;
+
+        if (!targetUser) {
+            alert("No citizen information available for this complaint.");
+            return;
+        }
+
+        if (!targetUser.id || !targetUser.username) {
+            console.warn("Invalid citizen user data:", targetUser);
+            alert("Cannot start chat — citizen info is incomplete.");
+            return;
+        }
+
+        navigate(`/chat/${complaint.id}`, {
+            state: {
+                username: targetUser.username,
+                complaintId: complaint.id,
+            },
+        });
+    };
 
     const handleAccept = async () => {
         if (!navigator.geolocation) {
@@ -275,12 +302,6 @@ const WorkerComplaintCard = ({ complaint, onUpdate }) => {
                                         onClick={() => setShowMedia({ ...showMedia, picture: true })}
                                         onError={handleImageError}
                                     />
-                                    {/* <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
-                                        <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-50 px-2 py-1 rounded text-sm flex items-center gap-1">
-                                            <Eye className="h-3 w-3" />
-                                            Click to enlarge
-                                        </span>
-                                    </div> */}
                                 </div>
                             )}
 
@@ -297,12 +318,6 @@ const WorkerComplaintCard = ({ complaint, onUpdate }) => {
                                         <source src={videoUrl} type="video/mp4" />
                                         Your browser does not support the video tag.
                                     </video>
-                                    {/* <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
-                                        <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-50 px-2 py-1 rounded text-sm flex items-center gap-1">
-                                            <Eye className="h-3 w-3" />
-                                            Click to enlarge
-                                        </span>
-                                    </div> */}
                                 </div>
                             )}
 
@@ -363,6 +378,17 @@ const WorkerComplaintCard = ({ complaint, onUpdate }) => {
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+                    {/* Communicate Button - Always visible when there's a citizen */}
+                    {complaint.citizen && (
+                        <button
+                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                            onClick={handleCommunicate}
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                            Communicate
+                        </button>
+                    )}
+
                     {complaint.status === "Pending" && (
                         <>
                             <button
@@ -388,7 +414,7 @@ const WorkerComplaintCard = ({ complaint, onUpdate }) => {
                                 className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
                             >
                                 <XCircle className="h-4 w-4" />
-                                report
+                                Report
                             </button>
                         </>
                     )}
@@ -462,7 +488,6 @@ const WorkerComplaintCard = ({ complaint, onUpdate }) => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 };

@@ -8,8 +8,10 @@ import AdminDashboardAnalysis from "./pages/AdminDashboardAnalysis";
 import CitizenComplaintsPage from "./pages/CitizenComplaintsPage";
 import WorkerComplaintPage from "./pages/WorkerComplaintPage";
 import ChatBoxPage from "./pages/ChatBoxPage";
+//import { AuthProvider } from "./context/AuthContext";
 export default function App() {
   return (
+
     <BrowserRouter>
       <nav className="bg-green-600 text-white p-4 flex justify-center space-x-6">
         <Link to="/">Register</Link>
@@ -29,5 +31,6 @@ export default function App() {
         <Route path="/chat/:complaintId" element={<ChatBoxPage />} />
       </Routes>
     </BrowserRouter>
+
   );
 }

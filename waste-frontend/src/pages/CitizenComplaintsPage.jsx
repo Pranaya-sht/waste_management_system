@@ -391,7 +391,7 @@ const ProfessionalComplaintPortal = ({ complaint, user }) => {
             return;
         }
 
-        navigate(`/chat/${targetUser.id}`, {
+        navigate(`/chat/${complaint.id}`, {
             state: {
                 username: targetUser.username,
                 complaintId: complaint.id,

@@ -1,14 +1,38 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
+import axios from "axios";
 
 const ChatBoxPage = () => {
     const { complaintId } = useParams();
     const location = useLocation();
     const { username } = location.state || {};
+    const [complaintExists, setComplaintExists] = useState(null);
 
-    if (!complaintId || !username) {
-        return <p className="text-center text-red-500">Missing complaint or user info.</p>;
+    useEffect(() => {
+        if (complaintId) {
+            axios.get(`http://127.0.0.1:8000/api/complaints/${complaintId}/`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("access")}`
+                }
+            })
+                .then(() => setComplaintExists(true))
+                .catch(() => setComplaintExists(false));
+        }
+    }, [complaintId]);
+
+    if (!username) {
+        return <p className="text-center text-red-500">Missing user info.</p>;
+    }
+
+    if (complaintExists === false) {
+        return <p className="text-center text-red-500">
+            Complaint #{complaintId} not found.
+        </p>;
+    }
+
+    if (complaintExists === null) {
+        return <p className="text-center text-gray-500">Loading...</p>;
     }
 
     return (

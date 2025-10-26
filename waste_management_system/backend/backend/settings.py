@@ -48,6 +48,11 @@ INSTALLED_APPS = [
 
 
 # Redis backend for WebSocket communication
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}
 ASGI_APPLICATION = "backend.asgi.application"  # Path to your ASGI app
 CHANNEL_LAYERS = {
     "default": {
