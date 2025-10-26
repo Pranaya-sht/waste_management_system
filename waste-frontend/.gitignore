@@ -7,15 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node modules & build
+node_modules/
+dist/
+dist-ssr/
 *.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,12 +24,16 @@ dist-ssr
 *.sln
 *.sw?
 *.sqlite3
-# Ignore Python cache files
+
+# Python cache files
 __pycache__/
 *.py[cod]
 
-.venv
+# Virtual environments
+.venv/
 venv/
 waste_management_system/venv/
+
+# Media and uploads
 media/
 profile_pics/
