@@ -36,6 +36,8 @@ urlpatterns = [
     path('api/complaints/categories/', views.complaint_categories, name="complaint-categories"),
     path('api/complaints/stats/', views.complaint_stats, name="complaint-stats"),
     path('api/complaints/<int:complaint_id>/messages/', get_complaint_messages),
+# urls.py
+    path('api/admins/', views.admin_list, name='admin-list'),
 
     # Must come AFTER manual endpoints
     path('api/', include(router.urls)),

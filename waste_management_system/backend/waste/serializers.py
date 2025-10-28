@@ -143,3 +143,11 @@ class RatingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rating
         fields = '__all__'
+        
+class AdminSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source="profile.role")
+    profile_picture = serializers.ImageField(source="profile.profile_picture", allow_null=True)
+    
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "role", "profile_picture"]

@@ -646,3 +646,15 @@ def get_complaint_messages(request, complaint_id):
     messages = Message.objects.filter(complaint_id=complaint_id).order_by('created_at')
     serializer = MessageSerializer(messages, many=True)
     return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def admin_list(request):
+    # Filter by role in Profile
+    admin_profiles = Profile.objects.filter(role="Admin")
+    
+    # Get the associated User objects
+    admins = [profile.user for profile in admin_profiles]
+    
+    serializer = UserSerializer(admins, many=True)
+    return Response(serializer.data)
