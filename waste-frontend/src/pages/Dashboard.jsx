@@ -302,11 +302,63 @@ export default function ProfilePage() {
                             <p className="text-sm text-gray-600 mb-4">
                                 Manage users, complaints, and approvals from your dashboard.
                             </p>
+                            <div className="flex items-center justify-center gap-6 mt-6">
+                                {/* Admin Dashboard Button */}
+                                <button
+                                    onClick={() => (window.location.href = "http://localhost:5173/admin-dashboard")}
+                                    className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
+                                >
+                                    Admin Dashboard
+                                </button>
+
+                                {/* Analysis Button */}
+                                <button
+                                    onClick={() => (window.location.href = "http://localhost:5173/admin-dashboard-analysis")}
+                                    className="relative inline-flex items-center justify-center px-6 py-3 overflow-hidden font-bold text-white rounded-xl group shadow-md hover:shadow-lg"
+                                >
+                                    <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 animate-gradient-x"></span>
+                                    <span className="absolute inset-0 w-full h-full transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-lg bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 animate-pulse"></span>
+                                    <span className="relative z-10">ANALYSIS</span>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                )}
+
+                {profile.role === "Worker" && (
+                    <div className="mt-6 flex justify-center">
+                        <div className="p-6 border border-green-300 rounded-xl bg-green-50 shadow-md text-center max-w-sm">
+                            <h2 className="text-lg font-semibold text-green-700 mb-2">
+                                Worker Portal
+                            </h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                                acceot or reject assigned complaints from your dashboard.
+                            </p>
                             <button
-                                onClick={() => (window.location.href = "http://localhost:5173/admin-dashboard")}
+                                onClick={() => (window.location.href = "http://localhost:5173/worker-complants-acceptance")}
                                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all"
                             >
-                                Open Admin Dashboard
+                                Open Worker Dashboard
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {profile.role === "Citizen" && (
+                    <div className="mt-6 flex justify-center">
+                        <div className="p-6 border border-green-300 rounded-xl bg-green-50 shadow-md text-center max-w-sm">
+                            <h2 className="text-lg font-semibold text-green-700 mb-2">
+                                Citizen Portal
+                            </h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                                creating and tracking your complaints from your dashboard.
+                            </p>
+                            <button
+                                onClick={() => (window.location.href = "http://localhost:5173/citizen-complants")}
+                                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all"
+                            >
+                                Open Citizen Dashboard
                             </button>
                         </div>
                     </div>

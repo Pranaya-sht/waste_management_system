@@ -7,7 +7,8 @@ import ProfilePage from "./pages/ProfilePage";
 import AdminDashboardAnalysis from "./pages/AdminDashboardAnalysis";
 import CitizenComplaintsPage from "./pages/CitizenComplaintsPage";
 import WorkerComplaintPage from "./pages/WorkerComplaintPage";
-import ChatBoxPage from "./pages/ChatBoxPage";
+import ChatBox from "./pages/ChatBoxPage";
+import ChatPage from "./pages/ChatBoxPage";
 //import { AuthProvider } from "./context/AuthContext";
 export default function App() {
   return (
@@ -28,7 +29,7 @@ export default function App() {
         <Route path="/admin-dashboard-analysis" element={<AdminDashboardAnalysis />} />
         <Route path="/citizen-complants" element={<CitizenComplaintsPage />} />
         <Route path="/worker-complants-acceptance" element={<WorkerComplaintPage />} />
-        <Route path="/chat/:complaintId" element={<ChatBoxPage />} />
+        <Route path="/chat/:complaintId" element={<ChatPage />} />
       </Routes>
     </BrowserRouter>
 

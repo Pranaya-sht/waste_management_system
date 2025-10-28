@@ -89,6 +89,8 @@ class ComplaintChatConsumer(BaseConsumer):
         self.complaint = complaint
 
         await super().connect()
+         # ✅ Mark messages as read when joining
+        await self.mark_messages_as_read(self.scope["user"])
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -120,7 +122,6 @@ class ComplaintChatConsumer(BaseConsumer):
 
     @database_sync_to_async
     def save_message(self, sender, message_text):
-        # defensive: ensure complaint is available
         if getattr(self, 'complaint', None) is None:
             try:
                 complaint = Complaint.objects.get(id=self.complaint_id)
@@ -129,12 +130,37 @@ class ComplaintChatConsumer(BaseConsumer):
         else:
             complaint = self.complaint
 
+        # Detect receiver:
+        if sender == complaint.user:
+            receiver = complaint.assigned_employee
+        else:
+            receiver = complaint.user
+
         return Message.objects.create(
             complaint=complaint,
             sender=sender,
+            receiver=receiver,
             message=message_text,
             message_type='complaint'
         )
+        
+    @database_sync_to_async
+    def mark_messages_as_read(self, user):
+        Message.objects.filter(
+            complaint=self.complaint,
+            receiver=user,
+            is_read=False
+        ).update(is_read=True)
+
+        
+    @database_sync_to_async
+    def mark_messages_as_read(self, user):
+        # Mark all messages sent TO this user as read
+        Message.objects.filter(
+            complaint=self.complaint,
+            receiver=user,
+            is_read=False
+        ).update(is_read=True)
 
 class DirectChatConsumer(BaseConsumer):
     async def connect(self):

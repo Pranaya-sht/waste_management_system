@@ -127,12 +127,12 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ["rating", "total_ratings", "rating_sum"]
         
 class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)
-    receiver = UserSerializer(read_only=True)
+    sender_username = serializers.CharField(source='sender.username', read_only=True)
+    receiver_username = serializers.CharField(source='receiver.username', read_only=True)
 
     class Meta:
         model = Message
-        fields = '__all__'
+        fields = ['id', 'sender_username', 'receiver_username', 'message', 'created_at', 'is_read']
         
 class ComplaintMediaSerializer(serializers.ModelSerializer):
     class Meta:

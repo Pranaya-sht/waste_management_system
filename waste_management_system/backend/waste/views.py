@@ -16,7 +16,11 @@ from django.db import models
 from django.db.models import Avg, Count, Q
 from rest_framework.decorators import api_view
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAdminUser
+from waste.models import Complaint, Rating
+from django.db.models import Avg, Count
 @api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
 def get_current_user(request):
@@ -598,3 +602,47 @@ class AdminAnalyticsView(APIView):
             "worker_ratings": worker_ratings,
         }
         return Response(data)
+    
+    
+class AdminAnalyticsView(APIView):
+    # permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        total_complaints = Complaint.objects.count()
+        pending_complaints = Complaint.objects.filter(status="Pending").count()
+        status_breakdown = Complaint.objects.values('status').annotate(count=Count('id'))
+
+        # convert list of dicts to {status: count}
+        status_data = {item['status']: item['count'] for item in status_breakdown}
+
+        average_worker_rating = Rating.objects.aggregate(avg_rating=Avg('rating'))['avg_rating']
+
+        top_workers = (
+            Rating.objects.values('worker__username')
+            .annotate(rating=Avg('rating'), total_ratings=Count('id'))
+            .order_by('-rating')[:5]
+        )
+
+        data = {
+            "total_complaints": total_complaints,
+            "pending_complaints": pending_complaints,
+            "average_worker_rating": round(average_worker_rating or 0, 2),
+            "status_breakdown": status_data,
+            "top_workers": [
+                {
+                    "username": w["worker__username"],
+                    "rating": round(w["rating"], 2),
+                    "total_ratings": w["total_ratings"],
+                }
+                for w in top_workers
+            ],
+        }
+
+        return Response(data)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_complaint_messages(request, complaint_id):
+    messages = Message.objects.filter(complaint_id=complaint_id).order_by('created_at')
+    serializer = MessageSerializer(messages, many=True)
+    return Response(serializer.data)

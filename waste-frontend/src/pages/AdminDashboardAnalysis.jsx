@@ -10,8 +10,8 @@ export default function AdminDashboard() {
     useEffect(() => {
         const fetchAnalytics = async () => {
             try {
-                const token = localStorage.getItem("access"); // ✅ JWT token stored after login
-                const role = localStorage.getItem("role");
+                const token = localStorage.getItem("access"); // ✅ stored during login
+                const role = localStorage.getItem("role"); // ✅ also stored during login
 
                 if (!token) {
                     setError("You must be logged in as admin to view analytics.");
@@ -24,7 +24,7 @@ export default function AdminDashboard() {
                 }
 
                 const response = await axios.get(
-                    "http://127.0.0.1:8000/api/admin/analytics/", // ✅ backend URL
+                    "http://127.0.0.1:8000/api/admin/analytics/",
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -34,7 +34,7 @@ export default function AdminDashboard() {
 
                 setAnalytics(response.data);
             } catch (err) {
-                console.error(err);
+                console.error("Analytics fetch error:", err);
                 if (err.response?.status === 401) {
                     setError("Unauthorized: Please log in again.");
                 } else if (err.response?.status === 403) {

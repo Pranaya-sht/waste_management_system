@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import path
 from django.urls import include, path
 from rest_framework import routers
-from waste.views import ComplaintViewSet ,UserViewSet,ProfileViewSet, RatingViewSet, MessageViewSet, ComplaintMediaViewSet
+from waste.views import ComplaintViewSet ,UserViewSet,ProfileViewSet, RatingViewSet, MessageViewSet, ComplaintMediaViewSet, get_complaint_messages
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from waste import views
 from waste.views import CustomTokenObtainPairView
@@ -29,11 +29,13 @@ urlpatterns = [
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"), 
     path("api/users/profile/", views.user_profile, name="user_profile"),
     path('api/users/<int:user_id>/profile/', views.get_user_profile, name='get_user_profile'),  
+    # path('api/admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
     path('api/admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
 
     # ✅ Move these two ABOVE router.include
     path('api/complaints/categories/', views.complaint_categories, name="complaint-categories"),
     path('api/complaints/stats/', views.complaint_stats, name="complaint-stats"),
+    path('api/complaints/<int:complaint_id>/messages/', get_complaint_messages),
 
     # Must come AFTER manual endpoints
     path('api/', include(router.urls)),

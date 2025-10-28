@@ -13,6 +13,7 @@
     "@chakra-ui/react": "^3.27.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
     "@tailwindcss/vite": "^4.1.14",
     "axios": "^1.12.2",
@@ -28,7 +29,8 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.9.4",
     "react-use-websocket": "^4.13.0",
-    "recharts": "^3.3.0"
+    "recharts": "^3.3.0",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
