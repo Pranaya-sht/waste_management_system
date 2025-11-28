@@ -131,10 +131,10 @@ class ComplaintChatConsumer(BaseConsumer):
             complaint = self.complaint
 
         # Detect receiver:
-        if sender == complaint.user:
-            receiver = complaint.assigned_employee
+        if sender == complaint.citizen:
+            receiver = complaint.assigned_worker
         else:
-            receiver = complaint.user
+            receiver = complaint.citizen
 
         return Message.objects.create(
             complaint=complaint,
